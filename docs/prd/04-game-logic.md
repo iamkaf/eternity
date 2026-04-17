@@ -203,17 +203,81 @@ declare namespace Eternity {
 
 **React Flow** for the visual node graph. It's the industry standard for React-based node editors, provides first-class TypeScript support, and custom node rendering lets us embed RPG-specific UI (dialogue previews, item pickers) inside graph nodes.
 
-### 14.7 Sandbox Technology (TBD)
+### 14.7 Sandbox Technology: Web Workers + Comlink
 
-The text scripting sandbox remains an open question (see [00-overview.md](./00-overview.md) §8). Candidates under evaluation:
+**Resolved**: Web Workers with Google's [Comlink](https://github.com/GoogleChromeLabs/comlink) library.
 
-| Option | Pros | Cons |
-|---|---|---|
-| **Web Workers** | Native browser API, message-passing isolation, no dependencies | Limited API surface, async-only communication |
-| **QuickJS (WASM)** | True isolation, synchronous execution, small footprint | Separate runtime (not standard TS/JS), integration complexity |
-| **V8 Isolates** | Same engine as Node.js, full JS compatibility | Electron-specific, won't work in web export |
+| Factor | Web Workers + Comlink | QuickJS (WASM) | V8 Isolates |
+|---|---|---|---|
+| **Isolation** | ✅ No DOM, `require`, `fs`, or Electron APIs | ✅ True sandbox — only exposed functions exist | ✅ Full isolation |
+| **Cross-platform** | ✅ Electron + Web exports | ✅ Works everywhere | ❌ Electron only |
+| **TypeScript support** | ✅ Native — same runtime as the engine | ⚠️ Requires pre-compilation to JS | ✅ Native |
+| **Debugging** | ✅ DevTools worker debugging | ❌ No source maps, limited debugging | ✅ DevTools |
+| **API bridging** | ✅ Comlink makes calls look like local async functions | ⚠️ Manual function registration | ⚠️ Manual binding |
+| **Async model** | All calls are async (Promises) | Synchronous (can block) | Synchronous |
+| **Dependencies** | Comlink (~2KB) | quickjs-emscripten (~500KB WASM) | Node.js-specific C++ bindings |
 
-Decision deferred until implementation begins. All three options can implement the same `Eternity.*` API surface.
+#### Implementation
+
+```typescript
+// Main thread: expose Eternity API to the worker via Comlink
+import * as Comlink from "comlink";
+
+const worker = new Worker("script-sandbox.js");
+
+// Expose the Eternity.* API object to the worker
+const eternityAPI = {
+  vars: {
+    get: (id: number) => gameState.variables[id],
+    set: (id: number, value: number) => { gameState.variables[id] = value; },
+  },
+  switches: {
+    get: (id: number) => gameState.switches[id],
+    set: (id: number, value: boolean) => { gameState.switches[id] = value; },
+  },
+  getPlayer: () => serializeEntity(playerEntity),
+  showText: (text: string, face?: string) => messageQueue.enqueue({ type: "show-text", text, face }),
+  showChoices: (choices: string[]) => messageQueue.enqueueAndWait({ type: "show-choices", choices }),
+  // ...
+};
+
+Comlink.expose(eternityAPI, worker);
+
+// Run a user script in the sandbox
+const scriptRunner = Comlink.wrap<ScriptRunner>(worker);
+await scriptRunner.execute("scripts/custom-damage.ts", { a: attacker, b: defender });
+```
+
+```typescript
+// Worker thread (script-sandbox.js): receives Eternity API, executes scripts
+import * as Comlink from "comlink";
+
+// The Eternity API appears as a local async object via Comlink proxy
+let Eternity: EternityAPI;
+
+const scriptRunner = {
+  async execute(scriptPath: string, args: Record<string, unknown>) {
+    const module = await import(scriptPath);
+    return module.default(Eternity, args);
+  },
+};
+
+// Receive the API proxy from the main thread
+Comlink.expose(scriptRunner);
+Eternity = Comlink.wrap(self);
+```
+
+#### Security Hardening
+
+Web Workers don't have DOM access, but they can still use `fetch()` and `XMLHttpRequest`. Additional restrictions:
+
+```
+Content-Security-Policy for worker scripts:
+  connect-src 'none';     // Block all network requests from worker
+  script-src 'self';      // Only load scripts from the same origin
+```
+
+This ensures user scripts can only interact with the game through the `Eternity.*` API — no filesystem, no network, no DOM.
 
 ---
 

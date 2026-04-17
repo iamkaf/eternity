@@ -7,6 +7,66 @@
 
 This is the first phase where the json-render catalog drives the UI. All editor panels described here are catalog components rendered from schema-constrained JSON — both for consistency and to establish the pattern plugins will follow.
 
+### json-render Integration Pattern
+
+The editor uses Vercel's json-render in three steps: **catalog** (defines allowed components), **registry** (maps them to React), and **renderer** (renders the spec).
+
+```typescript
+// 1. CATALOG — defines all allowed editor components and their prop schemas
+// This is the "contract" that plugins must follow.
+import { defineCatalog } from "@json-render/core";
+import { schema } from "@json-render/react/schema";
+
+export const editorCatalog = defineCatalog(schema, {
+  components: {
+    MapTree: {
+      props: z.object({
+        maps: z.array(z.object({ id: z.string(), name: z.string(), children: z.array(z.string()) })),
+        selectedMapId: z.string().optional(),
+      }),
+      slots: ["default"],
+      description: "Hierarchical map list with drag-and-drop reordering.",
+    },
+    PropertyEditor: {
+      props: z.object({ schemaId: z.string(), entityId: z.string(), data: z.unknown() }),
+      description: "Auto-generated form from a Schema Registry schema.",
+    },
+    TilePalette: {
+      props: z.object({ tilesetId: z.string(), activeTab: z.enum(["A","B","C","D","E"]) }),
+      description: "Tile selection grid with tab navigation.",
+    },
+    // ... all other editor components
+  },
+});
+
+// 2. REGISTRY — maps catalog entries to concrete React components
+import { defineRegistry } from "@json-render/react";
+import { MapTreePanel } from "@eternity/editor/panels/MapTree";
+import { PropertyEditorPanel } from "@eternity/editor/panels/PropertyEditor";
+import { TilePalettePanel } from "@eternity/editor/panels/TilePalette";
+
+export const { registry } = defineRegistry(editorCatalog, {
+  components: {
+    MapTree: MapTreePanel,
+    PropertyEditor: PropertyEditorPanel,
+    TilePalette: TilePalettePanel,
+  },
+  actions: {
+    on_select_map: async (params, { setState }) => { /* navigate to map */ },
+    on_entity_edit: async (params, { setState }) => { /* create Command */ },
+  },
+});
+
+// 3. RENDERER — renders any spec that conforms to the catalog
+import { Renderer } from "@json-render/react";
+
+function EditorPanel({ spec }: { spec: unknown }) {
+  return <Renderer spec={spec} registry={registry} />;
+}
+```
+
+**Plugin integration**: Plugins call `editorCatalog.register()` to add new components and `registry.register()` to map them to React implementations. The editor shell doesn't need to know about plugin components at compile time.
+
 ---
 
 ## Module 10: Map Editor

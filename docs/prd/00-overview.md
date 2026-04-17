@@ -69,7 +69,15 @@ All version pins reflect the latest stable releases as of April 2026.
 | **json-render** | latest (`@json-render/core`, `@json-render/react`) | Editor UI contract | `defineCatalog` + Zod schemas constrain all editor panels (built-in and plugin) to a validated JSON tree. Plugins register catalog entries instead of shipping raw React components. The `defineRegistry` step maps abstract definitions to physical components. |
 | **Zod** | 3.x | Schema validation | Shared by json-render catalogs and the Schema Registry module. Single validation library across the entire stack. |
 
-### 3.3 Data & Persistence
+### 3.3 Toolchain
+
+| Technology | Role | Rationale |
+|---|---|---|
+| **pnpm** | Package manager | Content-addressable storage, `workspace:*` protocol for internal packages, smaller disk footprint than npm/yarn |
+| **Turborepo** | Monorepo task orchestration | Simple, fast caching, affected-only builds. Right fit for a small-to-medium team — Nx would be overkill. |
+| **Vite / esbuild** | Bundling | Fast dev builds (Vite), fast production builds (esbuild). Used for both editor dev server and export pipeline. |
+
+### 3.4 Data & Persistence
 
 | Technology | Role | Notes |
 |---|---|---|
@@ -252,4 +260,8 @@ This document is the overview. Detailed requirements for each phase live in thei
 
 ## 8. Open Questions
 
-- [ ] **Scripting sandbox technology**: The text scripting sandbox needs to isolate user code from Node/Electron APIs. Candidates: V8 isolates, QuickJS, or Web Workers with a message-passing API. Needs evaluation before Phase 4.
+All open questions have been resolved. See §7 for resolved decisions.
+
+## 9. Resolved (Late)
+
+- [x] **Scripting sandbox technology**: **Web Workers + Comlink.** Web Workers provide natural isolation — no access to `require`, `fs`, DOM, or Electron APIs. Google's Comlink library proxies the `Eternity.*` scripting API across the worker boundary, making calls look like local async function calls. Combined with CSP headers restricting `fetch`/`XMLHttpRequest`, this provides sufficient sandboxing for user-authored game scripts. Works identically in Electron and web exports (unlike V8 isolates which are Electron-only). QuickJS WASM was considered for stronger isolation but rejected due to TypeScript compilation complexity and debugging limitations.

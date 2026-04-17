@@ -324,6 +324,62 @@ NPCs, the player, projectiles, visual effects — all are "entities" with differ
 
 RPG games rarely exceed a few hundred active entities per scene. Miniplex's object-based model aligns perfectly with the "single serializable state" architecture, and its React bindings simplify the editor's entity inspector.
 
+#### Miniplex API Usage
+
+```typescript
+import { World } from "miniplex";
+import { createECS } from "miniplex-react";
+
+// 1. Define the entity type — a union of all possible components
+type GameEntity = {
+  position?: PositionComponent;
+  sprite?: SpriteComponent;
+  movement?: MovementComponent;
+  collision?: CollisionComponent;
+  eventTrigger?: EventTriggerComponent;
+  character?: CharacterComponent;
+};
+
+// 2. Create the world
+const world = new World<GameEntity>();
+
+// 3. Generate React bindings for the editor
+export const ECS = createECS(world);
+
+// 4. Create entities — plain objects, fully serializable
+const npc = world.add({
+  position: { tileX: 5, tileY: 8, offsetX: 0, offsetY: 0, z: 0 },
+  sprite: { spriteSheet: "assets/characters/elder.png", animation: "idle-down", frame: 0, visible: true, opacity: 1 },
+  collision: { solid: true, triggerOnTouch: false, triggerOnAction: true },
+  character: { name: "Elder", movePattern: "fixed", directionFix: false },
+});
+
+// 5. Query entities by archetype
+const movingEntities = world.archetype("position", "movement");
+// movingEntities.entities → all entities with both position AND movement
+
+// 6. Systems iterate over archetypes
+function movementSystem(dt: number) {
+  for (const entity of movingEntities.entities) {
+    if (entity.movement!.isMoving) {
+      // Update position based on direction and speed
+    }
+  }
+}
+
+// 7. React: useArchetype hook re-renders when matching entities change
+function EntityInspector() {
+  const entities = ECS.useArchetype("position", "sprite");
+  return <ul>{entities.map(e => <li>{e.character?.name}</li>)}</ul>;
+}
+
+// ⚠ IMPORTANT: Always use world.addComponent/removeComponent for component changes.
+// Direct mutation of existing component VALUES is fine (entity.position.tileX = 5),
+// but adding/removing components must go through the world to update archetype indices.
+world.addComponent(npc, "movement", { speed: 3, direction: "down", isMoving: false, canDash: false, throughWalls: false });
+world.removeComponent(npc, "movement");
+```
+
 ### 8.4 Built-In Components
 
 ```typescript
