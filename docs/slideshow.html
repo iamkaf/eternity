@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eternity — RPG Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--border:#1e1e2e;
+  --gold:#d4a843;--gold-dim:#a07830;--gold-glow:#d4a84330;
+  --text:#e8e4dc;--text-dim:#8a8690;--text-faint:#504d58;
+  --accent:#5b8a72;--red:#c0544e;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+.deck{position:relative;width:100%;height:100%}
+.slide{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;padding:6vh 8vw;
+  opacity:0;pointer-events:none;transition:opacity .5s,transform .5s;
+  transform:translateY(20px);
+}
+.slide.active{opacity:1;pointer-events:auto;transform:translateY(0)}
+.slide.exit{opacity:0;transform:translateY(-20px)}
+
+h1{font-family:'Playfair Display',serif;font-weight:900;line-height:1.05}
+h2{font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(1.8rem,3.5vw,3rem);margin-bottom:.6em;color:var(--gold)}
+h3{font-size:1.1rem;font-weight:600;color:var(--gold-dim);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.5em}
+p{font-size:clamp(.95rem,1.3vw,1.15rem);line-height:1.7;color:var(--text-dim);max-width:52ch}
+code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:var(--surface);padding:.15em .4em;border-radius:4px;color:var(--gold)}
+
+.subtitle{font-size:clamp(1rem,1.5vw,1.3rem);color:var(--text-dim);font-weight:300;margin-top:.4em;letter-spacing:.04em}
+
+/* Grid layouts */
+.grid{display:grid;gap:1.5rem;width:100%;max-width:1100px}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:1.5rem;transition:border-color .3s,transform .3s;
+}
+.card:hover{border-color:var(--gold-dim);transform:translateY(-2px)}
+.card h4{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:.4em;color:var(--text)}
+.card p{font-size:.88rem;line-height:1.55;color:var(--text-dim)}
+.card .tag{display:inline-block;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:.2em .6em;border-radius:4px;margin-bottom:.6em}
+.tag.must{background:#c0544e20;color:var(--red)}
+.tag.core{background:#d4a84320;color:var(--gold)}
+.tag.ext{background:#5b8a7220;color:var(--accent)}
+
+/* Phase timeline */
+.timeline{display:flex;gap:0;width:100%;max-width:1100px}
+.phase{
+  flex:1;padding:1rem .8rem;text-align:center;position:relative;
+  border-top:3px solid var(--border);transition:border-color .4s;
+}
+.phase::before{
+  content:attr(data-num);position:absolute;top:-14px;left:50%;transform:translateX(-50%);
+  width:24px;height:24px;border-radius:50%;background:var(--bg);border:2px solid var(--border);
+  font-size:.65rem;font-weight:600;display:flex;align-items:center;justify-content:center;
+  color:var(--text-faint);transition:all .4s;
+}
+.phase.lit{border-top-color:var(--gold)}
+.phase.lit::before{border-color:var(--gold);color:var(--gold);background:var(--surface)}
+.phase h5{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:.6rem;color:var(--text-dim)}
+.phase .detail{font-size:.72rem;color:var(--text-faint);margin-top:.3rem;line-height:1.4}
+
+/* Tech stack pills */
+.pills{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-top:1rem}
+.pill{
+  font-size:.78rem;font-weight:500;padding:.35em .9em;border-radius:20px;
+  border:1px solid var(--border);color:var(--text-dim);transition:all .3s;
+}
+.pill:hover{border-color:var(--gold-dim);color:var(--text)}
+.pill.highlight{border-color:var(--gold);color:var(--gold);background:var(--gold-glow)}
+
+/* Architecture diagram */
+.arch{display:flex;flex-direction:column;align-items:center;gap:.8rem;width:100%;max-width:700px}
+.arch-row{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap}
+.arch-box{
+  font-size:.78rem;font-weight:500;padding:.5em 1.2em;border-radius:8px;
+  border:1px solid var(--border);color:var(--text-dim);text-align:center;
+  min-width:100px;transition:all .3s;
+}
+.arch-box.gold{border-color:var(--gold);color:var(--gold);background:var(--gold-glow)}
+.arch-box.green{border-color:var(--accent);color:var(--accent);background:#5b8a7215}
+.arch-arrow{color:var(--text-faint);font-size:.7rem;letter-spacing:.2em}
+
+/* Decision table */
+.decisions{width:100%;max-width:900px;border-collapse:collapse}
+.decisions th{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);text-align:left;padding:.5rem .8rem;border-bottom:1px solid var(--border)}
+.decisions td{font-size:.85rem;padding:.6rem .8rem;border-bottom:1px solid var(--border);color:var(--text-dim)}
+.decisions td:first-child{color:var(--text);font-weight:500}
+.decisions td:last-child{color:var(--gold-dim);font-family:'JetBrains Mono',monospace;font-size:.78rem}
+
+/* Footer nav */
+.nav{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:1rem;z-index:10}
+.nav button{
+  width:36px;height:36px;border-radius:50%;border:1px solid var(--border);
+  background:var(--surface);color:var(--text-dim);cursor:pointer;font-size:.9rem;
+  transition:all .25s;display:flex;align-items:center;justify-content:center;
+}
+.nav button:hover{border-color:var(--gold);color:var(--gold)}
+.dots{display:flex;gap:.4rem}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border);transition:all .3s;cursor:pointer}
+.dot.active{background:var(--gold);box-shadow:0 0 8px var(--gold-glow)}
+
+/* Ambient glow */
+.glow{
+  position:fixed;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,var(--gold-glow) 0%,transparent 70%);
+  pointer-events:none;opacity:.4;z-index:0;
+}
+.glow-1{top:-200px;right:-100px}
+.glow-2{bottom:-250px;left:-150px;opacity:.2}
+
+/* Stat callout */
+.stats{display:flex;gap:2.5rem;margin-top:1.5rem}
+.stat{text-align:center}
+.stat .num{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:var(--gold)}
+.stat .label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);margin-top:.2em}
+
+@media(max-width:768px){
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+  .timeline{flex-direction:column}
+  .phase{border-top:none;border-left:3px solid var(--border);text-align:left;padding:.6rem 1rem}
+  .phase.lit{border-left-color:var(--gold)}
+  .phase::before{top:50%;left:-14px;transform:translateY(-50%)}
+}
+</style>
+</head>
+<body>
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<div class="deck" id="deck">
+
+<!-- SLIDE 1: Title -->
+<div class="slide active" data-slide="0">
+  <h3>Introducing</h3>
+  <h1 style="font-size:clamp(3rem,7vw,6rem);color:var(--gold)">Eternity</h1>
+  <p class="subtitle">A modern, open-source RPG creation engine</p>
+  <div class="pills" style="margin-top:2rem">
+    <span class="pill highlight">Electron</span>
+    <span class="pill highlight">React 19</span>
+    <span class="pill highlight">PixiJS 8</span>
+    <span class="pill highlight">TypeScript 5</span>
+    <span class="pill">ECS</span>
+    <span class="pill">Multiplayer</span>
+    <span class="pill">Plugin System</span>
+  </div>
+  <p style="margin-top:2.5rem;font-size:.85rem;color:var(--text-faint)">↓ Arrow keys or click to navigate</p>
+</div>
+
+<!-- SLIDE 2: Problem -->
+<div class="slide" data-slide="1">
+  <h2>The Problem</h2>
+  <div class="grid grid-2" style="max-width:900px">
+    <div>
+      <h3>RPG Maker's Limits</h3>
+      <p>Proprietary. No version control. Single-file database locks. No multiplayer. No plugin API. Tied to NW.js. Limited export targets.</p>
+    </div>
+    <div>
+      <h3>Eternity's Answer</h3>
+      <p>Open-source. One entity per file (Git-friendly). WebGPU renderer. Relay multiplayer. Full plugin API. Export anywhere.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: Architecture -->
+<div class="slide" data-slide="2">
+  <h2>Architecture</h2>
+  <div class="arch">
+    <div class="arch-row">
+      <div class="arch-box gold">Editor (React + json-render)</div>
+    </div>
+    <div class="arch-arrow">▼ catalog / registry</div>
+    <div class="arch-row">
+      <div class="arch-box">Map Editor</div>
+      <div class="arch-box">Database Editor</div>
+      <div class="arch-box">Event Editor</div>
+      <div class="arch-box">Plugin Panels</div>
+    </div>
+    <div class="arch-arrow">▼ commands</div>
+    <div class="arch-row">
+      <div class="arch-box gold">Engine (PixiJS + Miniplex ECS)</div>
+    </div>
+    <div class="arch-arrow">▼ PAL interface</div>
+    <div class="arch-row">
+      <div class="arch-box green">Electron</div>
+      <div class="arch-box green">Web</div>
+      <div class="arch-box green">Headless</div>
+      <div class="arch-box green">Tauri (future)</div>
+    </div>
+  </div>
+  <p style="margin-top:1.2rem;text-align:center;font-size:.85rem">Platform Abstraction Layer decouples the engine from all OS-specific APIs</p>
+</div>
+
+<!-- SLIDE 4: Key Patterns -->
+<div class="slide" data-slide="3">
+  <h2>Three Core Patterns</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <span class="tag core">Schema</span>
+      <h4>Zod Schema Registry</h4>
+      <p>Single source of truth. Validates data, generates editor forms, powers localization extraction. Plugins register schemas — the editor auto-generates UI.</p>
+    </div>
+    <div class="card">
+      <span class="tag core">Command</span>
+      <h4>Command Pattern</h4>
+      <p>Every mutation is a Command with <code>execute()</code> and <code>undo()</code>. Full undo/redo. Disk sync. Multiplayer state replication. One pattern, everywhere.</p>
+    </div>
+    <div class="card">
+      <span class="tag core">Catalog</span>
+      <h4>json-render Catalog</h4>
+      <p>All editor panels — built-in and plugin — are catalog entries constrained by Zod schemas. Plugins extend UI without shipping raw React components.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Phases -->
+<div class="slide" data-slide="4">
+  <h2>7-Phase Roadmap</h2>
+  <div class="timeline">
+    <div class="phase lit" data-num="1"><h5>Foundation</h5><div class="detail">PAL, Schema Registry, Project Manager</div></div>
+    <div class="phase lit" data-num="2"><h5>Core Engine</h5><div class="detail">Assets, Tilemap, Input, ECS, Scenes</div></div>
+    <div class="phase" data-num="3"><h5>Core Editor</h5><div class="detail">Map Editor, Database, Playtest</div></div>
+    <div class="phase" data-num="4"><h5>Game Logic</h5><div class="detail">Events, Scripting, Battle, Audio</div></div>
+    <div class="phase" data-num="5"><h5>Multiplayer</h5><div class="detail">Relay Server, Prediction, SEA Export</div></div>
+    <div class="phase" data-num="6"><h5>Export</h5><div class="detail">Electron, Web, Asset Optimization</div></div>
+    <div class="phase" data-num="7"><h5>Polish</h5><div class="detail">Undo UI, Search, Extensions, i18n</div></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="num">25</div><div class="label">Modules</div></div>
+    <div class="stat"><div class="num">15</div><div class="label">Entity Schemas</div></div>
+    <div class="stat"><div class="num">14</div><div class="label">ADRs</div></div>
+    <div class="stat"><div class="num">235KB</div><div class="label">Documentation</div></div>
+  </div>
+</div>
+
+<!-- SLIDE 6: Plugin System -->
+<div class="slide" data-slide="5">
+  <h2>Plugin Architecture</h2>
+  <div class="grid grid-4">
+    <div class="card"><span class="tag ext">Extend</span><h4>Schemas</h4><p>Register new entity types. Auto-generates editor forms.</p></div>
+    <div class="card"><span class="tag ext">Extend</span><h4>ECS</h4><p>Custom components and systems. Full engine integration.</p></div>
+    <div class="card"><span class="tag ext">Extend</span><h4>Events</h4><p>Custom event commands appear alongside built-in ones.</p></div>
+    <div class="card"><span class="tag ext">Extend</span><h4>Export</h4><p>New export targets. Tauri, mobile, console — all plugins.</p></div>
+  </div>
+  <p style="margin-top:1.5rem;text-align:center">Plugins declare a <code>eternity-plugin.json</code> manifest. Editor and runtime code are strictly separated.</p>
+</div>
+
+<!-- SLIDE 7: Key Decisions -->
+<div class="slide" data-slide="6">
+  <h2>Key Decisions</h2>
+  <table class="decisions">
+    <tr><th>Decision</th><th>Choice</th><th>Alternative</th></tr>
+    <tr><td>Entity format</td><td>JSON (one file per entity)</td><td>TOML, YAML</td></tr>
+    <tr><td>ECS</td><td>Miniplex (object-based)</td><td>bitECS</td></tr>
+    <tr><td>Scripting sandbox</td><td>Web Workers + Comlink</td><td>QuickJS, V8</td></tr>
+    <tr><td>Editor UI</td><td>json-render catalog</td><td>Raw React</td></tr>
+    <tr><td>Monorepo</td><td>pnpm + Turborepo</td><td>Nx</td></tr>
+    <tr><td>Desktop export</td><td>Electron first, Tauri future</td><td>NW.js</td></tr>
+    <tr><td>Multiplayer</td><td>Authoritative relay server</td><td>P2P</td></tr>
+    <tr><td>Server export</td><td>Node.js SEA binary</td><td>Docker</td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 8: Multiplayer -->
+<div class="slide" data-slide="7">
+  <h2>Multiplayer</h2>
+  <div class="grid grid-2" style="max-width:900px">
+    <div>
+      <h3>Architecture</h3>
+      <p>Authoritative WebSocket relay server. Same engine runs headlessly via <code>HeadlessPlatform</code>. MessagePack binary protocol. Client-side prediction for responsiveness.</p>
+    </div>
+    <div>
+      <h3>Distribution</h3>
+      <p>Server exports as a Node.js Single Executable Application — one binary, no runtime dependencies. Download, run, host. Game data embedded via <code>sea.getAsset()</code>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 9: Export -->
+<div class="slide" data-slide="8">
+  <h2>Export Pipeline</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <span class="tag must">V1</span>
+      <h4>Electron Desktop</h4>
+      <p>Windows, macOS, Linux. ASAR packaging. Auto-update via blockmap diffing. Code signing.</p>
+    </div>
+    <div class="card">
+      <span class="tag must">V1</span>
+      <h4>Web / itch.io</h4>
+      <p>Static site export. PWA with Workbox service worker. IndexedDB saves. Offline play.</p>
+    </div>
+    <div class="card">
+      <span class="tag ext">Future</span>
+      <h4>Tauri / Mobile</h4>
+      <p>3-10MB bundles. Native Android/iOS via Tauri v2. PAL makes it a clean addition.</p>
+    </div>
+  </div>
+  <p style="margin-top:1.2rem;text-align:center">Asset optimization: PNG → WebP (25-35% savings), Audio → Opus, unused file exclusion, optional AES-256 encryption.</p>
+</div>
+
+<!-- SLIDE 10: End -->
+<div class="slide" data-slide="9">
+  <h3>Next Step</h3>
+  <h1 style="font-size:clamp(2.5rem,5vw,4rem);color:var(--gold)">Phase 1: Foundation</h1>
+  <p class="subtitle" style="max-width:40ch;text-align:center;margin-top:.8em">Platform Abstraction Layer → Schema Registry → Project Manager</p>
+  <div class="pills" style="margin-top:2rem">
+    <span class="pill">16 docs</span>
+    <span class="pill">235KB spec</span>
+    <span class="pill">0 open questions</span>
+    <span class="pill highlight">Ready to build</span>
+  </div>
+</div>
+
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button id="prev" aria-label="Previous">‹</button>
+  <div class="dots" id="dots"></div>
+  <button id="next" aria-label="Next">›</button>
+</div>
+
+<script>
+const slides=document.querySelectorAll('.slide');
+const dotsC=document.getElementById('dots');
+let cur=0;
+slides.forEach((_,i)=>{const d=document.createElement('div');d.className='dot'+(i===0?' active':'');d.onclick=()=>go(i);dotsC.appendChild(d)});
+const dots=document.querySelectorAll('.dot');
+
+function go(n){
+  if(n<0||n>=slides.length||n===cur)return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('exit');
+  setTimeout(()=>slides[cur===n?cur:cur].classList.remove('exit'),500);
+  const prev=cur;cur=n;
+  slides[cur].classList.add('active');
+  dots.forEach((d,i)=>d.classList.toggle('active',i===cur));
+  setTimeout(()=>slides[prev].classList.remove('exit'),500);
+}
+document.getElementById('prev').onclick=()=>go(cur-1);
+document.getElementById('next').onclick=()=>go(cur+1);
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' ')go(cur+1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(cur-1);
+});
+</script>
+</body>
+</html>
