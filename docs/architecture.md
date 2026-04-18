@@ -232,7 +232,6 @@ graph TD
     ENGINE --> SHARED
 
     PROJECT --> SHARED
-    PROJECT --> PE
 
     PE --> SHARED
     PW --> SHARED
@@ -259,138 +258,73 @@ graph TD
 
 ## 2. Game Project Structure (What Users Create)
 
-When a user creates a new project in Eternity, this is the directory layout:
+Canonical project layout, aligned with `docs/prd/01-foundation.md`:
 
 ```
 my-rpg-game/
-├── project.toml                    # Project metadata (name, version, author)
-├── config.toml                     # Editor preferences (grid size, last open map)
+├── eternity.toml                  # Project config (name, version, engine version, etc.)
+├── .gitignore                     # Auto-generated
+├── .gitattributes                 # Git LFS rules for binary assets
+│
 ├── data/
-│   ├── system.json                 # System config (start map, starting party, title BGM)
 │   ├── actors/
-│   │   ├── _index.json             # Entity list + display order
 │   │   ├── hero.json
-│   │   ├── merchant-nora.json
-│   │   └── knight-aldric.json
+│   │   └── merchant-nora.json
 │   ├── classes/
-│   │   ├── _index.json
-│   │   ├── warrior.json
-│   │   ├── mage.json
-│   │   └── thief.json
 │   ├── items/
-│   │   ├── _index.json
-│   │   ├── potion.json
-│   │   ├── ether.json
-│   │   └── antidote.json
 │   ├── skills/
-│   │   ├── _index.json
-│   │   ├── fire.json
-│   │   ├── heal.json
-│   │   └── power-strike.json
 │   ├── weapons/
-│   │   ├── _index.json
-│   │   ├── iron-sword.json
-│   │   └── oak-staff.json
 │   ├── armor/
-│   │   ├── _index.json
-│   │   ├── leather-armor.json
-│   │   └── iron-shield.json
 │   ├── enemies/
-│   │   ├── _index.json
-│   │   ├── slime.json
-│   │   └── goblin.json
 │   ├── troops/
-│   │   ├── _index.json
-│   │   ├── slime-x2.json
-│   │   └── goblin-pack.json
 │   ├── states/
-│   │   ├── _index.json
-│   │   ├── poison.json
-│   │   └── stun.json
-│   ├── tilesets/
-│   │   ├── _index.json
-│   │   ├── overworld.json
-│   │   └── dungeon.json
-│   ├── animations/
-│   │   ├── _index.json
-│   │   └── slash.json
 │   ├── common-events/
-│   │   ├── _index.json
-│   │   └── inn-rest.json
-│   ├── maps/
-│   │   ├── _index.json             # Map tree hierarchy
-│   │   ├── hometown/
-│   │   │   ├── _map.json           # Tile data, layers, properties
-│   │   │   └── events/
-│   │   │       ├── old-man-npc.json
-│   │   │       ├── treasure-chest.json
-│   │   │       └── door-to-inn.json
-│   │   ├── hometown-inn/
-│   │   │   ├── _map.json
-│   │   │   └── events/
-│   │   │       └── innkeeper.json
-│   │   └── forest-path/
-│   │       ├── _map.json
-│   │       └── events/
-│   │           └── blocking-guard.json
-│   └── locales/
-│       ├── en/
-│       │   └── strings.json        # Base language (auto-generated)
-│       └── ja/
-│           └── strings.json        # Translation
+│   └── system.json                # Global game settings
+│
+├── maps/
+│   ├── overworld/
+│   │   ├── overworld.map.json
+│   │   └── events/
+│   │       ├── old-man-npc.event.json
+│   │       └── treasure-chest-01.event.json
+│   ├── village-inn/
+│   │   ├── village-inn.map.json
+│   │   └── events/
+│   └── _index.json                # Map tree hierarchy
+│
 ├── assets/
-│   ├── characters/                 # Character sprite sheets
+│   ├── tilesets/
+│   │   ├── overworld-tiles.png
+│   │   └── overworld-tiles.tileset.json
+│   ├── characters/
 │   │   ├── hero-walk.png
-│   │   ├── hero-walk.sprite.json
-│   │   ├── elder.png
-│   │   └── elder.sprite.json
-│   ├── faces/                      # Portrait/face graphics
-│   │   ├── hero.png
-│   │   └── elder.png
-│   ├── tilesets/                   # Tileset images
-│   │   ├── overworld-a2.png
-│   │   ├── overworld-b.png
-│   │   └── dungeon-a2.png
-│   ├── parallaxes/                 # Parallax background images
-│   │   └── sky.png
-│   ├── animations/                 # Battle animation sprite sheets
-│   │   └── slash.png
+│   │   └── hero-walk.sprite.json
+│   ├── faces/
+│   ├── battlebacks/
+│   ├── parallaxes/
+│   ├── system/
 │   ├── audio/
-│   │   ├── bgm/                    # Background music
-│   │   │   ├── town.ogg
-│   │   │   ├── battle.ogg
-│   │   │   └── title.ogg
-│   │   ├── bgs/                    # Background sounds
-│   │   │   ├── rain.ogg
-│   │   │   └── wind.ogg
-│   │   ├── me/                     # Musical effects
-│   │   │   ├── victory.ogg
-│   │   │   └── level-up.ogg
-│   │   └── se/                     # Sound effects
-│   │       ├── cursor.ogg
-│   │       ├── confirm.ogg
-│   │       ├── cancel.ogg
-│   │       └── slash.ogg
-│   └── movies/                     # Video cutscenes
-│       └── intro.webm
-├── scripts/                        # User-authored TypeScript scripts
-│   ├── custom-damage.ts
-│   └── procedural-dungeon.ts
-├── plugins/                        # Installed plugins
+│   │   ├── bgm/
+│   │   ├── bgs/
+│   │   ├── me/
+│   │   └── se/
+│   └── movies/
+│
+├── scripts/                       # User-authored TypeScript scripts
+│   └── custom-battle-formula.ts
+│
+├── plugins/                       # Third-party plugins
 │   └── crafting-system/
 │       ├── eternity-plugin.json
+│       ├── schemas/
 │       ├── editor/
 │       ├── runtime/
-│       └── schemas/
-├── .eternity/                      # Editor-only state (gitignored)
-│   ├── playtest/                   # Playtest save data
-│   ├── cache/                      # Asset thumbnails, search index
-│   ├── editor-state.json           # Window layout, open tabs, cursor positions
-│   └── lock.json                   # Project lock file
-├── .gitignore                      # Ignores .eternity/, node_modules/
-└── exports/                        # Export output (gitignored)
-    ├── my-rpg-game-win32-x64/
-    └── my-rpg-game-web/
+│       └── commands/
+│
+└── .eternity/                     # Editor-only state (not committed)
+    ├── cache/
+    ├── playtest/
+    └── preferences.toml
 ```
 
 ### Key Conventions
@@ -399,9 +333,9 @@ my-rpg-game/
 |---|---|
 | **One entity per file** | `hero.json`, `potion.json` — never multiple entities in one file |
 | **Slug filenames** | `merchant-nora.json`, not `Merchant Nora.json` — lowercase, hyphenated |
-| **`_index.json`** | Per-directory index listing entity IDs and display order |
-| **`_map.json`** | Map tile data lives in a named directory alongside its events/ |
+| **`_index.json`** | Single source of truth for map hierarchy |
+| **`.map.json` / `.event.json`** | Map tile data and map-scoped events live together under each map directory |
 | **`.sprite.json`** | Animation metadata paired with a `.png` of the same name |
-| **TOML for config** | `project.toml`, `config.toml` — human-edited files |
+| **TOML for config** | `eternity.toml` for project config, `.eternity/preferences.toml` for per-user editor state |
 | **JSON for entities** | All game data — programmatically generated by the editor |
 | **`.eternity/`** | Editor state, never committed to Git |

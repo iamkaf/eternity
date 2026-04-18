@@ -104,13 +104,13 @@ Every entity file follows a consistent envelope:
 ```json
 {
   "$schema": "eternity:actor",
-  "id": "hero",
-  "name": "Hero",
   "meta": {
     "createdAt": "2026-04-16T22:00:00Z",
     "modifiedAt": "2026-04-16T22:30:00Z"
   },
   "data": {
+    "id": "hero",
+    "name": "Hero",
     "class": "warrior",
     "initialLevel": 1,
     "maxLevel": 99,
@@ -120,7 +120,7 @@ Every entity file follows a consistent envelope:
       "attack": 25,
       "defense": 20
     },
-    "equipment": {
+    "initialEquipment": {
       "weapon": "iron-sword",
       "shield": null,
       "head": null,
@@ -135,7 +135,7 @@ Every entity file follows a consistent envelope:
 
 Key conventions:
 - `$schema` references a registered schema type (validated by the Schema Registry)
-- `id` is the filename slug — must be unique within its type directory
+- `data.id` is the filename slug — must be unique within its type directory
 - `meta` is editor-managed, never user-edited
 - `data` contains the domain-specific payload, validated against the schema
 - All cross-entity references use string IDs (e.g. `"class": "warrior"`) resolved at load time

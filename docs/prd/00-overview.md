@@ -50,7 +50,7 @@ Eternity is an open-source, Electron-based RPG creation toolkit — a modern alt
 
 ## 3. Tech Stack
 
-All version pins reflect the latest stable releases as of April 2026.
+Version targets reflect the intended stack as of April 2026. Some entries are exact versions, while others are major-version targets that can be refined once implementation begins.
 
 ### 3.1 Runtime & Shell
 
@@ -160,7 +160,7 @@ pluginCatalog.register({
 ```
 
 This means:
-- Plugins never ship React components directly — they declare what they need via Zod schemas, and the editor's `defineRegistry` maps those declarations to physical components
+- Plugins do not wire themselves into the editor through ad-hoc imports — they register catalog entries plus editor-only implementations behind the host's registry boundary
 - The editor can validate, sandbox, and version-gate plugin UI contributions
 - The same catalog can power AI-assisted UI generation in the future (json-render's original purpose)
 
