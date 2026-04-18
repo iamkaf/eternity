@@ -29,10 +29,12 @@ plugins/
 └── crafting-system/
     ├── eternity-plugin.json    # Plugin manifest (required)
     ├── schemas/
-    │   └── recipe.ts           # Zod schema for the "Recipe" entity type
+    │   ├── recipe.ts           # Zod schema for the "Recipe" entity type
+    │   └── material.ts         # Optional additional schema referenced by the manifest
     ├── editor/
     │   ├── catalog.ts          # json-render catalog entries
-    │   └── RecipeEditor.tsx    # React component for the editor panel
+    │   ├── RecipeEditor.tsx    # Editor-only implementation resolved by the host registry
+    │   └── styles.css          # Optional editor-only styles
     ├── runtime/
     │   ├── index.ts            # Runtime entry point
     │   ├── components.ts       # ECS components
@@ -43,7 +45,7 @@ plugins/
 
 ### 2. Plugin Manifest
 
-`eternity-plugin.json` — the only required file:
+`eternity-plugin.json` is the only strictly required file. Other entries are only required if the manifest references them.
 
 ```json
 {
@@ -280,15 +282,16 @@ On editor close or plugin disable:
 
 ### Namespace Your Keys
 
-All plugin identifiers must be namespaced with `plugin:{plugin-name}:`:
+Schema and registry-facing identifiers should be namespaced. Runtime-facing identifiers should use a stable plugin prefix:
 
 ```
-Schema keys:     plugin:crafting-system:recipe
-Event commands:  crafting:open-station
-Component names: craftingStation
+Schema keys:          plugin:crafting-system:recipe
+Catalog entry IDs:    plugin:crafting-system:recipe-preview
+Event commands:       crafting:open-station
+Runtime components:   craftingStation
 ```
 
-This prevents collisions with engine keys (`eternity:actor`) and other plugins.
+This prevents collisions with engine keys (`eternity:actor`) and other plugins while still allowing concise runtime names.
 
 ### Editor vs. Runtime Separation
 
